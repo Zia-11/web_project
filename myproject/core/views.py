@@ -27,3 +27,41 @@ class ItemListCreateAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         # если валидация не прошла - возвращаем ошибки
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# APIView для получения, обновления, удаления конкретного Item по id
+class ItemRetrieveUpdateDeleteAPIView(APIView):
+
+    # GET - вернуть объект или ошибку в противном случае
+    def get_object(self, pk):
+        return get_object_or_404(Item, pk=pk)
+
+    # GET - вернуть Item по id=pk
+    def get(self, request, pk):
+        item = self.get_object(pk)
+        serializer = ItemSerializer(item)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PUT - полностью заменить поля Item
+    def put(self, request, pk):
+        item = self.get_object(pk)
+        serializer = ItemSerializer(item, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # PATCH - частично обновить поля
+    def patch(self, request, pk):
+        item = self.get_object(pk)
+        serializer = ItemSerializer(item, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # DELETE - удалить Item
+    def delete(self, request, pk):
+        item = self.get_object(pk)
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
