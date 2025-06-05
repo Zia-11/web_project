@@ -37,8 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core.apps.CoreConfig',
     'rest_framework',
+    'rest_framework.authtoken',
+    'django_filters',
+    'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
@@ -100,6 +102,21 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+REST_FRAMEWORK = {
+    # подключаем бэкенды фильтрации (django-filters), поиска и сортировки
+    'DEFAULT_FILTER_BACKENDS': [
+        # для точечной фильтрации по полям
+        'django_filters.rest_framework.DjangoFilterBackend',
+        # для поиска по вхождению
+        'rest_framework.filters.SearchFilter',
+        # для сортировки
+        'rest_framework.filters.OrderingFilter',
+    ],
+    # подключаем пагинацию страниц
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+}
 
 
 # Internationalization
