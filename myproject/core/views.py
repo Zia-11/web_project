@@ -8,6 +8,8 @@ from .serializers import ItemSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
 
 
 # Create your views here.
@@ -24,6 +26,9 @@ class ItemListCreateAPIView(APIView):
 
     # POST - создать новый Item
     def post(self, request):
+        # проверка на аутентификацию
+        if not request.user or not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
         serializer = ItemSerializer(data=request.data)
         # is_valid() проверит обязательное поле title, типы и тд
         if serializer.is_valid():
@@ -70,6 +75,8 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
 
     # PUT - полностью заменить поля Item
     def put(self, request, pk):
+        if not request.user or not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
         item = self.get_object(pk)
         serializer = ItemSerializer(item, data=request.data)
         if serializer.is_valid():
@@ -79,6 +86,8 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
 
     # PATCH - частично обновить поля
     def patch(self, request, pk):
+        if not request.user or not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
         item = self.get_object(pk)
         serializer = ItemSerializer(item, data=request.data, partial=True)
         if serializer.is_valid():
@@ -88,6 +97,10 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
 
     # DELETE - удалить Item
     def delete(self, request, pk):
+        # только админ может удалять
+        if not request.user.is_staff:
+            raise PermissionDenied(
+                "You do not have permission to delete this item.")
         item = self.get_object(pk)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
