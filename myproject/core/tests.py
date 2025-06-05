@@ -31,3 +31,16 @@ class ItemAPITestCase(APITestCase):
         # готовим клиент для аутентифицированных запросов
         self.auth_client = APIClient()
         self.auth_client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+
+    def test_get_item_list_public(self):
+        # публичный доступ к списку (get должен вернуть все item)
+        url = reverse('item-list-create')
+        # без токена
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # проверяем что вернулся список из 3 объектов
+        # учитывается пагинация
+        self.assertEqual(len(response.data['results']), 3)
+        # Проверка структуры полей
+        self.assertIn('id', response.data['results'][0])
+        self.assertIn('title', response.data['results'][0])
