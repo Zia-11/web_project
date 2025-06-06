@@ -78,3 +78,10 @@ class ItemAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         item = Item.objects.get(pk=1)
         self.assertEqual(item.title, "UpdatedTitle")
+
+    def test_delete_item_authorized(self):
+        # удаление объекта с токеном
+        url = reverse('item-detail', kwargs={'pk': 2})
+        response = self.auth_client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Item.objects.count(), 2)
