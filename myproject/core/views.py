@@ -9,7 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 
 
 # Create your views here.
@@ -18,24 +18,8 @@ from rest_framework.permissions import IsAuthenticated
 # APIView для списка и создания
 class ItemListCreateAPIView(APIView):
 
-    # GET - вернуть список всех Item
-    def get(self, request):
-        items = Item.objects.all().order_by('-created_at')
-        serializer = ItemSerializer(items, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    # POST - создать новый Item
-    def post(self, request):
-        # проверка на аутентификацию
-        if not request.user or not request.user.is_authenticated:
-            raise PermissionDenied("Authentication required.")
-        serializer = ItemSerializer(data=request.data)
-        # is_valid() проверит обязательное поле title, типы и тд
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        # если валидация не прошла - возвращаем ошибки
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # GET доступен всем, POST проверяется вручную
+    permission_classes = [AllowAny]
 
     # GET - запрос с фильтрацией, поиском, сортировкой и пагинацией
     filter_backends = [DjangoFilterBackend,
@@ -48,20 +32,33 @@ class ItemListCreateAPIView(APIView):
         qs = Item.objects.all().order_by('-created_at')
         for backend in self.filter_backends:
             qs = backend().filter_queryset(request, qs, view=self)
-
-        paginator = self.pagination_class() if hasattr(
-            self, 'pagination_class') else PageNumberPagination()
+        paginator = PageNumberPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
         if page is not None:
             serializer = ItemSerializer(page, many=True)
             return paginator.get_paginated_response(serializer.data)
-
         serializer = ItemSerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # POST - создать новый Item
+    def post(self, request):
+        # проверка на аутентификацию
+        if not request.user or not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
+        serializer = ItemSerializer(data=request.data)
+        # is_valid() проверит обязательное поле title, типы и тд
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # если валидация не прошла - возвращаем ошибки
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # APIView для получения, обновления, удаления конкретного Item по id
 class ItemRetrieveUpdateDeleteAPIView(APIView):
+
+    # get будет разрешён без токена, все остальные проверяются вручную
+    permission_classes = [AllowAny]
 
     # GET - вернуть объект или ошибку в противном случае
     def get_object(self, pk):
@@ -98,9 +95,9 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
     # DELETE - удалить Item
     def delete(self, request, pk):
         # только админ может удалять
-        if not request.user.is_staff:
+        if not request.user or not request.user.is_authenticated:
             raise PermissionDenied(
-                "You do not have permission to delete this item.")
+                "Authentication required.")
         item = self.get_object(pk)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
