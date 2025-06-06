@@ -62,3 +62,10 @@ class ItemAPITestCase(APITestCase):
         self.assertEqual(response.data['title'], "NewItem")
         # проверяем что теперь в базе 4 объекта
         self.assertEqual(Item.objects.count(), 4)
+
+    def test_update_item_unauthorized(self):
+        # изменение item без токена
+        url = reverse('item-detail', kwargs={'pk': 1})
+        data = {"title": "UpdatedTitle"}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
