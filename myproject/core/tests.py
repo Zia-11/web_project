@@ -69,3 +69,12 @@ class ItemAPITestCase(APITestCase):
         data = {"title": "UpdatedTitle"}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_item_authorized(self):
+        # частичное изменение item с токеном
+        url = reverse('item-detail', kwargs={'pk': 1})
+        data = {"title": "UpdatedTitle"}
+        response = self.auth_client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item = Item.objects.get(pk=1)
+        self.assertEqual(item.title, "UpdatedTitle")
