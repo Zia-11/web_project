@@ -44,3 +44,21 @@ class ItemAPITestCase(APITestCase):
         # Проверка структуры полей
         self.assertIn('id', response.data['results'][0])
         self.assertIn('title', response.data['results'][0])
+
+    def test_create_item_unauthorized(self):
+        # создание item без токена
+        url = reverse('item-list-create')
+        data = {"title": "NewItem", "description": "NewDesc"}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_item_authorized(self):
+        # создание Item с токеном
+        url = reverse('item-list-create')
+        data = {"title": "NewItem", "description": "NewDesc"}
+        response = self.auth_client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # проверяем что title вернулся верно
+        self.assertEqual(response.data['title'], "NewItem")
+        # проверяем что теперь в базе 4 объекта
+        self.assertEqual(Item.objects.count(), 4)
