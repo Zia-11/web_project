@@ -5,6 +5,10 @@ from rest_framework.pagination import PageNumberPagination
 from .serializers import UserSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views import View
 
 
 # Create your views here.
@@ -44,3 +48,26 @@ class LogoutView(APIView):
 
     def post(self, request):
         logout(request)
+
+
+@method_decorator(login_required, name='dispatch')
+class ProfileView(View):
+    # GET - доступно только залогиненным
+    def get(self, request):
+        return JsonResponse({
+            'username': request.user.username,
+            'email': request.user.email,
+        })
+    
+from django.contrib.auth.mixins import UserPassesTestMixin
+
+class StaffOnlyView(UserPassesTestMixin, View):
+    # GET- только для staff пользователей
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def handle_no_permission(self):
+        return JsonResponse({'detail': 'Forbidden'}, status=403)
+
+    def get(self, request):
+        return JsonResponse({'message': 'Привет, staff!'})
