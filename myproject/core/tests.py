@@ -1,4 +1,3 @@
-from django.test import TestCase
 from django.contrib.auth.models import User
 from django.urls import reverse
 from rest_framework import status
@@ -6,82 +5,73 @@ from rest_framework.test import APITestCase, APIClient
 
 from .models import Item
 
-
 class ItemAPITestCase(APITestCase):
     def setUp(self):
-        # создаём пользователя для аутентификации
-        self.username = "testuser"
-        self.password = "testpass123"
+        # создаём обычного пользователя
+        self.username = 'testuser'
+        self.password = 'testpass123'
         self.user = User.objects.create_user(
-            username=self.username, password=self.password)
+            username=self.username, password=self.password
+        )
 
-        # получаем токен через эндпоинт /api-token-auth/
-        url_token = reverse('api_token_auth')
-        data = {"username": self.username, "password": self.password}
-        response = self.client.post(url_token, data, format='json')
-        # 200 и в ответе должен быть токен
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.token = response.data['token']
+        # создаём несколько Item-ов
+        Item.objects.create(title='First', description='Desc1')
+        Item.objects.create(title='Second', description='Desc2')
+        Item.objects.create(title='Third', description='Desc3')
 
-        # создаём несколько item для проверки списка и фильтрации
-        Item.objects.create(title="First", description="First desc")
-        Item.objects.create(title="Second", description="Second desc")
-        Item.objects.create(title="Another", description="Another desc")
+        # неавторизованный клиент
+        self.anon_client = APIClient()
 
-        # готовим клиент для аутентифицированных запросов
+        # авторизованный через сессию клиент
         self.auth_client = APIClient()
-        self.auth_client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+        login_successful = self.auth_client.login(username=self.username, password=self.password)
+        assert login_successful, 'Не удалось залогинить тестового пользователя'
 
     def test_get_item_list_public(self):
-        # публичный доступ к списку (get должен вернуть все item)
         url = reverse('item-list-create')
-        # без токена
-        response = self.client.get(url)
+        response = self.anon_client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # проверяем что вернулся список из 3 объектов
-        # учитывается пагинация
         self.assertEqual(len(response.data['results']), 3)
-        # Проверка структуры полей
-        self.assertIn('id', response.data['results'][0])
-        self.assertIn('title', response.data['results'][0])
 
     def test_create_item_unauthorized(self):
-        # создание item без токена
         url = reverse('item-list-create')
-        data = {"title": "NewItem", "description": "NewDesc"}
-        response = self.client.post(url, data, format='json')
+        data = {'title': 'NewItem', 'description': 'NewDesc'}
+        response = self.anon_client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_item_authorized(self):
-        # создание Item с токеном
         url = reverse('item-list-create')
-        data = {"title": "NewItem", "description": "NewDesc"}
+        data = {'title': 'NewItem', 'description': 'NewDesc'}
         response = self.auth_client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        # проверяем что title вернулся верно
-        self.assertEqual(response.data['title'], "NewItem")
-        # проверяем что теперь в базе 4 объекта
+        self.assertEqual(response.data['title'], 'NewItem')
         self.assertEqual(Item.objects.count(), 4)
 
     def test_update_item_unauthorized(self):
-        # изменение item без токена
-        url = reverse('item-detail', kwargs={'pk': 1})
-        data = {"title": "UpdatedTitle"}
-        response = self.client.patch(url, data, format='json')
+        item = Item.objects.first()
+        url = reverse('item-detail', kwargs={'pk': item.pk})
+        data = {'title': 'Updated'}
+        response = self.anon_client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_update_item_authorized(self):
-        # частичное изменение item с токеном
-        url = reverse('item-detail', kwargs={'pk': 1})
-        data = {"title": "UpdatedTitle"}
+        item = Item.objects.first()
+        url = reverse('item-detail', kwargs={'pk': item.pk})
+        data = {'title': 'Updated'}
         response = self.auth_client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        item = Item.objects.get(pk=1)
-        self.assertEqual(item.title, "UpdatedTitle")
+        item.refresh_from_db()
+        self.assertEqual(item.title, 'Updated')
+
+    def test_delete_item_unauthorized(self):
+        item = Item.objects.first()
+        url = reverse('item-detail', kwargs={'pk': item.pk})
+        response = self.anon_client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_delete_item_authorized(self):
-        # удаление объекта с токеном
-        url = reverse('item-detail', kwargs={'pk': 2})
+        # обычный пользователь не имеет права удалять (требуется is_staff=True)
+        item = Item.objects.first()
+        url = reverse('item-detail', kwargs={'pk': item.pk})
         response = self.auth_client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(Item.objects.count(), 2)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

@@ -118,10 +118,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 
-    # аутентификация
+    # аутентификация: только по токену
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
     ],
 
     # права по умолчанию (все пользователи должны быть аутентифицированы)
@@ -130,6 +130,26 @@ REST_FRAMEWORK = {
     ],
 }
 
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        # азовая авторизация
+        'BasicAuth': {
+            'type': 'basic',
+            'description': 'HTTP Basic Authentication; введите свой username и password.',
+        },
+        # с токеном
+        'TokenAuth': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Authorization',
+            'description': 'Для запросов поместите сюда ваш токен в формате: Token <ваш_токен>'
+        }
+        
+    },
+    'USE_SESSION_AUTH':  True,
+    'LOGIN_URL': '/accounts/login/',
+    'LOGOUT_URL': '/accounts/logout/',
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/

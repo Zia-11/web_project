@@ -10,6 +10,7 @@ from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
+from drf_yasg.utils import swagger_auto_schema
 
 
 # Create your views here.
@@ -40,6 +41,15 @@ class ItemListCreateAPIView(APIView):
         serializer = ItemSerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # добавим body параметр
+    @swagger_auto_schema(
+            operation_description="Создать новый Item (требуется токен).",
+            request_body=ItemSerializer,              
+            responses={201: ItemSerializer,
+                    400: 'Bad Request (Validation errors)',
+                    403: 'Forbidden (если неавторизован)'}
+        )
+
         # POST - создать новый Item
     def post(self, request):
         # проверка на аутентификацию
@@ -69,6 +79,12 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
         item = self.get_object(pk)
         serializer = ItemSerializer(item)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @swagger_auto_schema(
+            operation_description="Полностью обновить Item (PUT)",
+            request_body=ItemSerializer,
+            responses={200: ItemSerializer, 400: 'Bad Request', 403: 'Forbidden'}
+        )    
 
     # PUT - полностью заменить поля Item
     def put(self, request, pk):
@@ -80,6 +96,12 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @swagger_auto_schema(
+        operation_description="Частично обновить Item (PATCH)",
+        request_body=ItemSerializer,
+        responses={200: ItemSerializer, 400: 'Bad Request', 403: 'Forbidden'}
+    )
 
     # PATCH - частично обновить поля
     def patch(self, request, pk):
@@ -95,9 +117,10 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
     # DELETE - удалить Item
     def delete(self, request, pk):
         # только админ может удалять
-        if not request.user or not request.user.is_authenticated:
-            raise PermissionDenied(
-                "Authentication required.")
+        if not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
+        if not request.user.is_staff:
+            raise PermissionDenied("Only admin can delete this item.")
         item = self.get_object(pk)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
