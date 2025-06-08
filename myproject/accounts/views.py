@@ -71,3 +71,72 @@ class StaffOnlyView(UserPassesTestMixin, View):
 
     def get(self, request):
         return JsonResponse({'message': 'Привет, staff!'})
+    
+class SessionSetView(APIView):
+    #POST - сохранение значения в сессии
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        key = request.data.get('key')
+        value = request.data.get('value')
+        if key is None or value is None:
+            return Response(
+                {"detail": "Нужно передать и 'key', и 'value'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        request.session[key] = value
+        return Response({"detail": f"Сохранено {key} = {value}"})
+
+class SessionGetView(APIView):
+    # GET - чтение значения из сессии
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        key = request.GET.get('key')
+        if not key:
+            return Response(
+                {"detail": "Нужно передать параметр ?key=<имя>"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if key not in request.session:
+            return Response(
+                {"detail": f"В сессии нет ключа '{key}'"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        return Response({key: request.session[key]})
+
+class SessionDeleteView(APIView):
+    #DELETE - удаление ключа из сессии
+    permission_classes = [permissions.AllowAny]
+
+    def delete(self, request):
+        key = request.GET.get('key')
+        if not key:
+            return Response(
+                {"detail": "Нужно передать параметр ?key=<имя>"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if key not in request.session:
+            return Response(
+                {"detail": f"В сессии нет ключа '{key}'"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        old = request.session.pop(key)
+        return Response({key: old, "detail": "Удалено"})
+
+class SessionExpiryView(APIView):
+    #POST - установка времени жизни сессии
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        seconds = request.data.get('seconds')
+        try:
+            sec = int(seconds)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Передайте целое число сек в поле 'seconds'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # sec == 0 — сессия до закрытия браузера; >0 — число секунд; None — по настройкам
+        request.session.set_expiry(sec)
+        return Response({"detail": f"Срок жизни сессии установлен: {sec} сек."})
