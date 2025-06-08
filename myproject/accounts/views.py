@@ -1,27 +1,36 @@
-from django.shortcuts import render
 from django.contrib.auth import get_user_model, authenticate, login, logout
-from rest_framework import generics, permissions, status
-from rest_framework.pagination import PageNumberPagination
-from .serializers import UserSerializer
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views import View
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import UserPassesTestMixin
+
+from rest_framework import generics, permissions, status
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
+from .serializers import (
+    UserSerializer,
+    LoginSerializer,
+    SessionSetSerializer,
+    SessionExpirySerializer,
+)
 
 
 # Create your views here.
-
 User = get_user_model()
 
-# регистрация (доступна всем)
+# регистрация нового пользователя
 class UserRegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
 
-# список пользователей (требует аутентификации)
+# список пользователей с пагинацией
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -31,6 +40,7 @@ class UserListView(generics.ListAPIView):
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(request_body=LoginSerializer)
     def post(self, request):
         user = authenticate(
             request,
@@ -48,7 +58,7 @@ class LogoutView(APIView):
 
     def post(self, request):
         logout(request)
-
+        return Response({'detail': 'Успешно разлогинены'})
 
 @method_decorator(login_required, name='dispatch')
 class ProfileView(View):
@@ -58,11 +68,9 @@ class ProfileView(View):
             'username': request.user.username,
             'email': request.user.email,
         })
-    
-from django.contrib.auth.mixins import UserPassesTestMixin
 
 class StaffOnlyView(UserPassesTestMixin, View):
-    # GET- только для staff пользователей
+    # GET - только для staff пользователей
     def test_func(self):
         return self.request.user.is_staff
 
@@ -71,11 +79,12 @@ class StaffOnlyView(UserPassesTestMixin, View):
 
     def get(self, request):
         return JsonResponse({'message': 'Привет, staff!'})
-    
+
 class SessionSetView(APIView):
-    #POST - сохранение значения в сессии
+    # POST - сохранение значения в сессии
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(request_body=SessionSetSerializer)
     def post(self, request):
         key = request.data.get('key')
         value = request.data.get('value')
@@ -91,6 +100,17 @@ class SessionGetView(APIView):
     # GET - чтение значения из сессии
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'key',
+                openapi.IN_QUERY,
+                description="Имя ключа в сессии",
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
+        ]
+    )
     def get(self, request):
         key = request.GET.get('key')
         if not key:
@@ -106,9 +126,20 @@ class SessionGetView(APIView):
         return Response({key: request.session[key]})
 
 class SessionDeleteView(APIView):
-    #DELETE - удаление ключа из сессии
+    # DELETE - удаление ключа из сессии
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'key',
+                openapi.IN_QUERY,
+                description="Имя ключа для удаления",
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
+        ]
+    )
     def delete(self, request):
         key = request.GET.get('key')
         if not key:
@@ -125,9 +156,10 @@ class SessionDeleteView(APIView):
         return Response({key: old, "detail": "Удалено"})
 
 class SessionExpiryView(APIView):
-    #POST - установка времени жизни сессии
+    # POST - установка времени жизни сессии
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(request_body=SessionExpirySerializer)
     def post(self, request):
         seconds = request.data.get('seconds')
         try:
@@ -137,6 +169,5 @@ class SessionExpiryView(APIView):
                 {"detail": "Передайте целое число сек в поле 'seconds'"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        # sec == 0 — сессия до закрытия браузера; >0 — число секунд; None — по настройкам
         request.session.set_expiry(sec)
         return Response({"detail": f"Срок жизни сессии установлен: {sec} сек."})
