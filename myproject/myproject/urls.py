@@ -40,6 +40,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('api/', include('core.urls')),
+    path('api/accounts/', include('accounts.urls')),
     path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
     # роуты для сваггера
     path('swagger(<format>\.json|\.yaml)', schema_view.without_ui(
