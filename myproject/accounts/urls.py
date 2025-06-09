@@ -11,6 +11,7 @@ from .views import(
     SessionDeleteView,
     SessionExpiryView,
 )
+from .views import EditorOnlyView
 
 urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='user-register'),
@@ -26,5 +27,7 @@ urlpatterns = [
     path('session/get/',    SessionGetView.as_view(),    name='session-get'),
     path('session/delete/', SessionDeleteView.as_view(), name='session-delete'),
     path('session/expiry/', SessionExpiryView.as_view(), name='session-expiry'),
+
+    path('editor-only/', EditorOnlyView.as_view(), name='editor-only'),
 ]
 

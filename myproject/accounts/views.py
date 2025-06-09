@@ -20,6 +20,8 @@ from .serializers import (
     SessionExpirySerializer,
 )
 
+from django.utils.decorators import method_decorator
+from .decorators import role_required
 
 # Create your views here.
 User = get_user_model()
@@ -171,3 +173,11 @@ class SessionExpiryView(APIView):
             )
         request.session.set_expiry(sec)
         return Response({"detail": f"Срок жизни сессии установлен: {sec} сек."})
+
+@method_decorator(role_required('editor'), name='dispatch')
+class EditorOnlyView(APIView):
+    # например доступно только юзерам из группы 'editor'
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({'message': 'Welcome, editor!'})
