@@ -1,10 +1,6 @@
 from django.contrib.auth import get_user_model, authenticate, login, logout
-from django.http import JsonResponse
-from django.views import View
-from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import UserPassesTestMixin
-
+from rest_framework.renderers import JSONRenderer
 from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
@@ -20,8 +16,10 @@ from .serializers import (
     SessionExpirySerializer,
 )
 
-from django.utils.decorators import method_decorator
 from .decorators import role_required
+from rest_framework import permissions
+from django.utils.decorators import method_decorator
+
 
 # Create your views here.
 User = get_user_model()
@@ -62,25 +60,26 @@ class LogoutView(APIView):
         logout(request)
         return Response({'detail': 'Успешно разлогинены'})
 
-@method_decorator(login_required, name='dispatch')
-class ProfileView(View):
+class ProfileView(APIView):
     # GET - доступно только залогиненным
+    renderer_classes = [JSONRenderer]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
-        return JsonResponse({
+        return Response({
             'username': request.user.username,
             'email': request.user.email,
         })
 
-class StaffOnlyView(UserPassesTestMixin, View):
+class StaffOnlyView(UserPassesTestMixin, APIView):
     # GET - только для staff пользователей
     def test_func(self):
         return self.request.user.is_staff
 
     def handle_no_permission(self):
-        return JsonResponse({'detail': 'Forbidden'}, status=403)
+        return Response({'detail': 'Forbidden'}, status=403)
 
     def get(self, request):
-        return JsonResponse({'message': 'Привет, staff!'})
+        return Response({'message': 'Привет, staff!'})
 
 class SessionSetView(APIView):
     # POST - сохранение значения в сессии
@@ -143,7 +142,7 @@ class SessionDeleteView(APIView):
         ]
     )
     def delete(self, request):
-        key = request.GET.get('key')
+        key = request.GET.get('key') or request.data.get('key')
         if not key:
             return Response(
                 {"detail": "Нужно передать параметр ?key=<имя>"},
