@@ -162,7 +162,7 @@ class SanitizeView(APIView):
 
 
 class FileUploadView(APIView):
-    # Загружает файл в MEDIA_ROOT/uploads/ и возвращает ссылку
+    # загружает файл в MEDIA_ROOT/uploads/ и возвращает ссылку
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):

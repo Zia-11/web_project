@@ -13,7 +13,7 @@ class ItemSerializer(serializers.ModelSerializer):
 class QueryParamsSerializer(serializers.Serializer):
     name = serializers.CharField(
         max_length=50,
-        strip=True,
+        trim_whitespace=True,
         help_text="Имя (строка, до 50 символов)"
     )
     age = serializers.IntegerField(
