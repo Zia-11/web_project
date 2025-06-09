@@ -11,7 +11,15 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from drf_yasg.utils import swagger_auto_schema
-
+import os
+from django.conf import settings
+from django.utils.html import strip_tags
+from rest_framework import status, permissions
+from .serializers import (
+    QueryParamsSerializer,
+    SanitizeSerializer,
+    FileUploadSerializer
+)
 
 # Create your views here.
 
@@ -124,3 +132,54 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
         item = self.get_object(pk)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ValidateQueryView(APIView):
+    # валидация GET-параметров через сериализатор
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        serializer = QueryParamsSerializer(data=request.GET)
+        serializer.is_valid(raise_exception=True)
+        # если валидно — вернуть очищенные данные
+        return Response(serializer.validated_data)
+
+
+class SanitizeView(APIView):
+    # возвращает plain-text без тегов
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = SanitizeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        raw = serializer.validated_data['raw_html']
+        # убираем все HTML теги
+        cleaned = strip_tags(raw)
+
+        return Response({
+            "cleaned_text": cleaned
+        })
+
+
+class FileUploadView(APIView):
+    # Загружает файл в MEDIA_ROOT/uploads/ и возвращает ссылку
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = FileUploadSerializer(data=request.data, files=request.FILES)
+        serializer.is_valid(raise_exception=True)
+
+        f = serializer.validated_data['file']
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        path = os.path.join(upload_dir, f.name)
+
+        # сохраняем файл
+        with open(path, 'wb+') as dest:
+            for chunk in f.chunks():
+                dest.write(chunk)
+
+        url = request.build_absolute_uri(
+            settings.MEDIA_URL + 'uploads/' + f.name
+        )
+        return Response({"file_url": url}, status=status.HTTP_201_CREATED)
