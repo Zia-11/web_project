@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,11 +24,16 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-hwi+u%8bbp=+-jhu^1nn2_lk3n@w!k03^7pe9#fsp%(dwc1%v6'
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
+DB_NAME = config('DB_NAME', default='db.sqlite3')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, DB_NAME),
+    }
+}
 
 ALLOWED_HOSTS = []
 
@@ -47,9 +53,12 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig', 
     'drf_yasg',
     'core.apps.CoreConfig',
+    'corsheaders', 
+    'channels',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -192,3 +201,18 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
+]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+ASGI_APPLICATION = 'myproject.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
