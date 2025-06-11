@@ -189,4 +189,8 @@ class FileUploadView(APIView):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'price']  # фильтрация по этим полям
+    search_fields = ['name', 'description', 'category']  # поиск
+    ordering_fields = ['price', 'quantity', 'name']      # сортировка
