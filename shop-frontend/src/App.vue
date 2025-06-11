@@ -14,3 +14,11 @@ export default {
   }
 }
 </script>
+<style>
+body {
+  background: #0873a9;
+  background: url('@/assets/bg.png') no-repeat center center fixed;
+  background-size: cover;
+}
+</style>
+
