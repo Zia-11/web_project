@@ -39,3 +39,8 @@ class FileUploadSerializer(serializers.Serializer):
         if f.size > limit_mb * 1024 * 1024:
             raise serializers.ValidationError(f"Максимальный размер — {limit_mb} MB.")
         return f
+    
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = '__all__'

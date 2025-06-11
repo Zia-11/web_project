@@ -20,7 +20,9 @@ from .serializers import (
     SanitizeSerializer,
     FileUploadSerializer
 )
-
+from rest_framework import viewsets
+from .models import Product
+from .serializers import ProductSerializer
 # Create your views here.
 
 
@@ -183,3 +185,7 @@ class FileUploadView(APIView):
             settings.MEDIA_URL + 'uploads/' + f.name
         )
         return Response({"file_url": url}, status=status.HTTP_201_CREATED)
+    
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
