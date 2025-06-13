@@ -1,8 +1,7 @@
 from django.contrib import admin
 from .models import Item
 
-# Register your models here.
-
+# регистрируем модель в админке Django
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):

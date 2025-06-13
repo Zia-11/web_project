@@ -17,11 +17,9 @@ from .serializers import (
 )
 
 from .decorators import role_required
-from rest_framework import permissions
 from django.utils.decorators import method_decorator
 
-
-# Create your views here.
+# модель пользователя
 User = get_user_model()
 
 # регистрация нового пользователя
@@ -30,17 +28,20 @@ class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
 
-# список пользователей с пагинацией
+# пользователи с пагинацией
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = PageNumberPagination
 
+# вход пользователя
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(request_body=LoginSerializer)
+    @swagger_auto_schema(
+        operation_summary="Вход пользователя",
+    )
     def post(self, request):
         user = authenticate(
             request,
@@ -53,39 +54,57 @@ class LoginView(APIView):
         login(request, user)
         return Response({'detail': 'Успешно залогинены'})
 
+# выход пользователя
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_summary="Выход пользователя",
+    )
     def post(self, request):
         logout(request)
         return Response({'detail': 'Успешно разлогинены'})
 
+# получение профиля текущего пользователя
 class ProfileView(APIView):
-    # GET - доступно только залогиненным
     renderer_classes = [JSONRenderer]
     permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Получение профиля текущего пользователя",
+    )
     def get(self, request):
         return Response({
             'username': request.user.username,
             'email': request.user.email,
         })
 
+# только для пользователя с правами staff
 class StaffOnlyView(UserPassesTestMixin, APIView):
-    # GET - только для staff пользователей
+
+    # проверка на staff
     def test_func(self):
         return self.request.user.is_staff
 
     def handle_no_permission(self):
         return Response({'detail': 'Forbidden'}, status=403)
 
+    @swagger_auto_schema(
+        operation_summary="Для staff-пользователей",
+    )
     def get(self, request):
         return Response({'message': 'Привет, staff!'})
 
+# сохранение значения в сессию
 class SessionSetView(APIView):
-    # POST - сохранение значения в сессии
+
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(request_body=SessionSetSerializer)
+    @swagger_auto_schema(
+        operation_summary="Сохранение значения в сессии",
+    )
+
+    # сохраняет переданную пару key-value в сессию пользователя
     def post(self, request):
         key = request.data.get('key')
         value = request.data.get('value')
@@ -97,11 +116,13 @@ class SessionSetView(APIView):
         request.session[key] = value
         return Response({"detail": f"Сохранено {key} = {value}"})
 
+# получение значения из сессии по ключу
 class SessionGetView(APIView):
-    # GET - чтение значения из сессии
+
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(
+        operation_summary="Получение значения из сессии",
         manual_parameters=[
             openapi.Parameter(
                 'key',
@@ -112,6 +133,8 @@ class SessionGetView(APIView):
             ),
         ]
     )
+
+    # возвращает значение из сессии по ключу 
     def get(self, request):
         key = request.GET.get('key')
         if not key:
@@ -126,11 +149,13 @@ class SessionGetView(APIView):
             )
         return Response({key: request.session[key]})
 
+# удаление ключа из сессии
 class SessionDeleteView(APIView):
-    # DELETE - удаление ключа из сессии
+
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(
+        operation_summary="Удалить ключ из сессии",
         manual_parameters=[
             openapi.Parameter(
                 'key',
@@ -156,11 +181,14 @@ class SessionDeleteView(APIView):
         old = request.session.pop(key)
         return Response({key: old, "detail": "Удалено"})
 
+# установка времени жизни сессии
 class SessionExpiryView(APIView):
-    # POST - установка времени жизни сессии
+
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(request_body=SessionExpirySerializer)
+    @swagger_auto_schema(
+        operation_summary="Установить время жизни сессии",
+    )
     def post(self, request):
         seconds = request.data.get('seconds')
         try:
@@ -173,10 +201,14 @@ class SessionExpiryView(APIView):
         request.session.set_expiry(sec)
         return Response({"detail": f"Срок жизни сессии установлен: {sec} сек."})
 
+# доступ только для пользователей с ролью editor
 @method_decorator(role_required('editor'), name='dispatch')
 class EditorOnlyView(APIView):
-    # например доступно только юзерам из группы 'editor'
+
     permission_classes = [permissions.IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_summary="Только для editor",
+    )
     def get(self, request):
         return Response({'message': 'Welcome, editor!'})

@@ -2,15 +2,14 @@ from rest_framework import serializers
 from .models import Item
 from .models import Product
 
-
+# cериализатор для модели Item - преобразует объекты в JSON и обратно
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
-        # перечисляем поля, которые хотим отдавать и принимать
         fields = ['id', 'title', 'description', 'created_at']
-        # поле read_only делает его только для чтения
         read_only_fields = ['id', 'created_at']
 
+# сериализатор для валидации GET-параметров
 class QueryParamsSerializer(serializers.Serializer):
     name = serializers.CharField(
         max_length=50,
@@ -22,25 +21,26 @@ class QueryParamsSerializer(serializers.Serializer):
         help_text="Возраст (число от 0 до 120)"
     )
 
+# сериализатор для приема и валидации HTML-строки, которую будем очищать от тегов
 class SanitizeSerializer(serializers.Serializer):
-    # Сырый HTML-текст для очистки
     raw_html = serializers.CharField(
         help_text="HTML-текст, который нужно очистить"
     )
 
+# сериализатор для загрузки файлов через API
 class FileUploadSerializer(serializers.Serializer):
-    # Загружаемый файл (до 2 МБ)
     file = serializers.FileField(
         help_text="Загружаемый файл (до 2 МБ)"
     )
 
+    # ограничиваем размер файла (максимум 2 МБ)
     def validate_file(self, f):
-        # ограничиваем размер 2 МБ
         limit_mb = 2
         if f.size > limit_mb * 1024 * 1024:
             raise serializers.ValidationError(f"Максимальный размер — {limit_mb} MB.")
         return f
-    
+
+# сериализатор для модели Product — автоматом берёт все поля
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product

@@ -1,44 +1,49 @@
-from django.shortcuts import render
+import os
+
+# django
+from django.conf import settings
+from django.shortcuts import render, get_object_or_404
+from django.utils.html import strip_tags
+
+# rest
+from rest_framework import status, permissions, filters, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-from .models import Item
-from .serializers import ItemSerializer
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
+
+# filters
+from django_filters.rest_framework import DjangoFilterBackend
+
+# swagger
 from drf_yasg.utils import swagger_auto_schema
-import os
-from django.conf import settings
-from django.utils.html import strip_tags
-from rest_framework import status, permissions
+
+# models/serializers
+from .models import Item, Product
 from .serializers import (
+    ItemSerializer,
+    ProductSerializer,
     QueryParamsSerializer,
     SanitizeSerializer,
-    FileUploadSerializer
+    FileUploadSerializer,
 )
-from rest_framework import viewsets
-from .models import Product
-from .serializers import ProductSerializer
-# Create your views here.
 
-
-# APIView для списка и создания
+# класс для списка и создания item
 class ItemListCreateAPIView(APIView):
-
-    # GET доступен всем, POST проверяется вручную
+    # доступно всем пользователям
     permission_classes = [AllowAny]
 
-    # GET - запрос с фильтрацией, поиском, сортировкой и пагинацией
     filter_backends = [DjangoFilterBackend,
                        filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['created_at']
-    search_fields = ['title', 'description']
-    ordering_fields = ['created_at', 'title']
+    filterset_fields = ['created_at'] #фильтр по дате создания
+    search_fields = ['title', 'description'] #поиск по названию и описанию
+    ordering_fields = ['created_at', 'title'] #сортировка по дате и названию
 
+    @swagger_auto_schema(
+        operation_summary="Получение списка Item",
+    )
+    #получение списка item
     def get(self, request):
         qs = Item.objects.all().order_by('-created_at')
         for backend in self.filter_backends:
@@ -51,55 +56,46 @@ class ItemListCreateAPIView(APIView):
         serializer = ItemSerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # добавим body параметр
     @swagger_auto_schema(
-            operation_description="Создать новый Item (требуется токен).",
-            request_body=ItemSerializer,              
-            responses={201: ItemSerializer,
-                    400: 'Bad Request (Validation errors)',
-                    403: 'Forbidden (если неавторизован)'}
-        )
-
-        # POST - создать новый Item
+        operation_summary="Создание нового Item",
+    )
+    # создание нового item
     def post(self, request):
-        # проверка на аутентификацию
         if not request.user or not request.user.is_authenticated:
-            raise PermissionDenied("Authentication required.")
+            raise PermissionDenied("Требуется аутентификация")
         serializer = ItemSerializer(data=request.data)
-        # is_valid() проверит обязательное поле title, типы и тд
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        # если валидация не прошла - возвращаем ошибки
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# APIView для получения, обновления, удаления конкретного Item по id
+# класс для работы с одним item
 class ItemRetrieveUpdateDeleteAPIView(APIView):
 
-    # get будет разрешён без токена, все остальные проверяются вручную
+    # доступно всем
     permission_classes = [AllowAny]
 
-    # GET - вернуть объект или ошибку в противном случае
+    # получение item по id
     def get_object(self, pk):
         return get_object_or_404(Item, pk=pk)
 
-    # GET - вернуть Item по id=pk
+    @swagger_auto_schema(
+        operation_summary="Получение Item по id",
+    )
+    # получение и сериализация объекта
     def get(self, request, pk):
         item = self.get_object(pk)
         serializer = ItemSerializer(item)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     @swagger_auto_schema(
-            operation_description="Полностью обновить Item (PUT)",
-            request_body=ItemSerializer,
-            responses={200: ItemSerializer, 400: 'Bad Request', 403: 'Forbidden'}
-        )    
-
-    # PUT - полностью заменить поля Item
+        operation_summary="Полное обновление Item",
+    )
+    # полное обновление Item
     def put(self, request, pk):
         if not request.user or not request.user.is_authenticated:
-            raise PermissionDenied("Authentication required.")
+            raise PermissionDenied("Требуется аутентификация")
         item = self.get_object(pk)
         serializer = ItemSerializer(item, data=request.data)
         if serializer.is_valid():
@@ -108,15 +104,12 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @swagger_auto_schema(
-        operation_description="Частично обновить Item (PATCH)",
-        request_body=ItemSerializer,
-        responses={200: ItemSerializer, 400: 'Bad Request', 403: 'Forbidden'}
+        operation_summary="Частичное обновление Item",
     )
-
-    # PATCH - частично обновить поля
+    # частичное обновление item
     def patch(self, request, pk):
         if not request.user or not request.user.is_authenticated:
-            raise PermissionDenied("Authentication required.")
+            raise PermissionDenied("Требуется аутентификация")
         item = self.get_object(pk)
         serializer = ItemSerializer(item, data=request.data, partial=True)
         if serializer.is_valid():
@@ -124,73 +117,81 @@ class ItemRetrieveUpdateDeleteAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # DELETE - удалить Item
+    @swagger_auto_schema(
+        operation_summary="Удаление Item",
+    )
+    # удаление item
     def delete(self, request, pk):
-        # только админ может удалять
         if not request.user.is_authenticated:
-            raise PermissionDenied("Authentication required.")
+            raise PermissionDenied("Требуется аутентификация")
         if not request.user.is_staff:
-            raise PermissionDenied("Only admin can delete this item.")
+            raise PermissionDenied("Только администратор может удалить этот элемент")
         item = self.get_object(pk)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+# валидация GET-параметров через сериализатор
 class ValidateQueryView(APIView):
-    # валидация GET-параметров через сериализатор
+
+    # любой может валидировать параметры
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+        operation_summary="Валидация GET-параметров",
+    )
     def get(self, request):
         serializer = QueryParamsSerializer(data=request.GET)
         serializer.is_valid(raise_exception=True)
-        # если валидно — вернуть очищенные данные
         return Response(serializer.validated_data)
 
-
+# санитизация html
 class SanitizeView(APIView):
-    # возвращает plain-text без тегов
+
+    # любой может отправлять запрос
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+        operation_summary="Санитизация HTML",
+    )
     def post(self, request):
         serializer = SanitizeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         raw = serializer.validated_data['raw_html']
-        # убираем все HTML теги
         cleaned = strip_tags(raw)
-
         return Response({
             "cleaned_text": cleaned
         })
 
-
+# загрузка файла
 class FileUploadView(APIView):
-    # загружает файл в MEDIA_ROOT/uploads/ и возвращает ссылку
+
+    # любой может загружать файл
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+        operation_summary="Загрузка файла",
+    )
     def post(self, request):
         serializer = FileUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         f = serializer.validated_data['file']
         upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, f.name)
-
-        # сохраняем файл
         with open(path, 'wb+') as dest:
             for chunk in f.chunks():
                 dest.write(chunk)
-
         url = request.build_absolute_uri(
             settings.MEDIA_URL + 'uploads/' + f.name
         )
         return Response({"file_url": url}, status=status.HTTP_201_CREATED)
     
+# CRUD по Product через ViewSet
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'price']  # фильтрация по этим полям
-    search_fields = ['name', 'description', 'category']  # поиск
-    ordering_fields = ['price', 'quantity', 'name']      # сортировка
+    filterset_fields = ['category', 'price'] # фильтрация по категории и цене
+    search_fields = ['name', 'description', 'category'] # поиск по названию, описанию, категории
+    ordering_fields = ['price', 'quantity', 'name'] # сортировка по цене, количеству и названию
