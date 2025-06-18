@@ -10,11 +10,11 @@ def role_required(role_name):
 
             # проверяем авторизован ли пользователь
             if not user.is_authenticated:
-                return JsonResponse({'detail': 'Authentication required.'}, status=401)
+                return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
             
             # проверяем состоит ли пользователь в группе с нужной ролью
             if not user.groups.filter(name=role_name).exists():
-                return JsonResponse({'detail': f'Forbidden: requires {role_name} role.'}, status=403)
+                return JsonResponse({'detail': f'Запрещено: требуется {role_name} роль.'}, status=403)
             return view_func(request, *args, **kwargs)
         return _wrapped
     return decorator

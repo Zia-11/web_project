@@ -35,19 +35,19 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',
-    'accounts.apps.AccountsConfig', 
+    'accounts.apps.AccountsConfig',
     'drf_yasg',
     'core.apps.CoreConfig',
-    'corsheaders', 
+    'corsheaders',
     'channels',
 ]
 
 # Middleware - промежуточные обработчики запросов
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -107,12 +107,13 @@ REST_FRAMEWORK = {
     ],
     # подключаем пагинацию страниц
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 1000,
 
     # аутентификация: только по токену
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.BasicAuthentication',
     ],
 
     # права по умолчанию (все пользователи должны быть аутентифицированы)
@@ -136,7 +137,7 @@ SWAGGER_SETTINGS = {
             'name': 'Authorization',
             'description': 'Для запросов поместите сюда ваш токен в формате: Token <ваш_токен>'
         }
-        
+
     },
     'USE_SESSION_AUTH':  True,
     'LOGIN_URL': '/accounts/login/',
@@ -169,16 +170,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080"
 ]
 
- # разрешить запросы с любых доменов
+# разрешить запросы с любых доменов
 CORS_ALLOW_ALL_ORIGINS = True
 
 # для channels
 ASGI_APPLICATION = 'myproject.asgi.application'
 
- # канальный слой для WebSocket
+# канальный слой для WebSocket
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
-

@@ -41,6 +41,7 @@ class LoginView(APIView):
 
     @swagger_auto_schema(
         operation_summary="Вход пользователя",
+        request_body=LoginSerializer 
     )
     def post(self, request):
         user = authenticate(
@@ -102,8 +103,19 @@ class SessionSetView(APIView):
 
     @swagger_auto_schema(
         operation_summary="Сохранение значения в сессии",
+        request_body=SessionSetSerializer,
+        responses={
+            200: openapi.Response(
+                description="Подтверждение сохранения",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            )
+        }
     )
-
     # сохраняет переданную пару key-value в сессию пользователя
     def post(self, request):
         key = request.data.get('key')
@@ -188,6 +200,18 @@ class SessionExpiryView(APIView):
 
     @swagger_auto_schema(
         operation_summary="Установить время жизни сессии",
+        request_body=SessionExpirySerializer,  # <-- здесь
+        responses={
+            200: openapi.Response(
+                description="Срок жизни сессии установлен",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'detail': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            )
+        }
     )
     def post(self, request):
         seconds = request.data.get('seconds')
@@ -211,4 +235,4 @@ class EditorOnlyView(APIView):
         operation_summary="Только для editor",
     )
     def get(self, request):
-        return Response({'message': 'Welcome, editor!'})
+        return Response({'message': 'Привет, editor!'})

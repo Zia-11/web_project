@@ -20,7 +20,6 @@ class QueryParamsSerializer(serializers.Serializer):
         min_value=0, max_value=120,
         help_text="Возраст (число от 0 до 120)"
     )
-
 # сериализатор для приема и валидации HTML-строки, которую будем очищать от тегов
 class SanitizeSerializer(serializers.Serializer):
     raw_html = serializers.CharField(

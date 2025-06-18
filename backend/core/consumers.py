@@ -8,18 +8,18 @@ class ProductCountConsumer(AsyncWebsocketConsumer):
 
     # метод вызывается при новом подключении по WebSocket
     async def connect(self):
-        await self.channel_layer.group_add("products", self.channel_name)
+        await self.channel_layer.group_add("Продукты", self.channel_name)
         await self.accept()
         await self.send_count()
 
     # метод вызывается при отключении клиента
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard("products", self.channel_name)
+        await self.channel_layer.group_discard("Продукты", self.channel_name)
 
     # метод для отправки клиенту актуального количества товаров
     async def send_count(self):
         count = await self.get_count()
-        await self.send(text_data=json.dumps({"count": count}))
+        await self.send(text_data=json.dumps({"Количество": count}))
 
     # асинхронный статический метод для получения количества товаров в базе
     @staticmethod
@@ -33,4 +33,4 @@ class ProductCountConsumer(AsyncWebsocketConsumer):
     # метод вызывается при получении сообщения типа "product_count_update" из группы
     async def product_count_update(self, event):
         count = event['count']
-        await self.send(text_data=json.dumps({"count": count}))
+        await self.send(text_data=json.dumps({"Количество": count}))

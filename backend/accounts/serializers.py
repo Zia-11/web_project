@@ -27,8 +27,8 @@ class LoginSerializer(serializers.Serializer):
 
 # сериализатор для установки значения в сессию
 class SessionSetSerializer(serializers.Serializer):
-    key = serializers.CharField()
-    value = serializers.CharField()
+    key = serializers.CharField(help_text="Имя ключа в сессии")
+    value = serializers.CharField(help_text="Значение для сохранения")
 
 # сериализатор для установки времени жизни сессии
 class SessionExpirySerializer(serializers.Serializer):

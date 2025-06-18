@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.authtoken.views import obtain_auth_token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -27,12 +27,12 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('api/', include('core.urls')),
     path('api/accounts/', include('accounts.urls')),
-    path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
+    path('api-token-auth/', ObtainAuthToken.as_view(), name='api_token_auth'),
 
     # роуты для сваггера
     path('swagger(<format>\.json|\.yaml)', schema_view.without_ui(
         cache_timeout=0), name='schema-json'),
     path('swagger/', schema_view.with_ui('swagger',
          cache_timeout=0), name='schema-swagger-ui'),
-    path('api/', include('core.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) # для отдачи медиафайлов
+    # для отдачи медиафайлов
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
